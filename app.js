@@ -1,8 +1,29 @@
 "use strict";
 const { Builder, By, Key, until } = require('selenium-webdriver'),
-    config = require("./config/config");
+    config = require("./config/config"),
+    telegram = require(`telegram-bot-api`);
 
-async function searchExtension(date, hour, minute, duration, emailNumberArray) {
+let api = new telegram({
+    token: '891688089:AAGwdwxxKcYp5mrUtGl_2JqmyuhiecpQgaE',
+    updates: {
+        enabled: true
+    }
+});
+
+const sendTelegram = (info) => {
+    api.sendMessage({
+            chat_id: -1001329764265,
+            text: info
+        })
+        .then((data) => {
+            console.log(data);
+        })
+        .catch((err) => {
+            console.log(err);
+        });
+}
+
+async function searchExtension(theme, info, date, hour, minute, duration, emailNumberArray) {
     try {
         let driver = await new Builder().forBrowser('chrome').build();
         await driver.get(`https://${config.PBX3cx.url}/webclient/#/login`);
@@ -44,9 +65,9 @@ async function searchExtension(date, hour, minute, duration, emailNumberArray) {
         await driver.findElement(By.id('inputDuration')).sendKeys(duration);
 
         // Тема конференции
-        await driver.findElement(By.id('inputName')).sendKeys('Конференция пиздатых людей');
+        await driver.findElement(By.id('inputName')).sendKeys(theme);
         // Дополнительная информация для участников
-        await driver.findElement(By.id('txtDescription')).sendKeys('Собираем всех пиздатых людей в одном месте');
+        await driver.findElement(By.id('txtDescription')).sendKeys(info);
 
         //Выберите E-mail / календарь для добавления
         await driver.findElement(By.id("calendarType")).click();
@@ -64,10 +85,24 @@ async function searchExtension(date, hour, minute, duration, emailNumberArray) {
             await driver.sleep(2000);
         }
         await driver.findElement(By.id("btnSave")).click();
+        await driver.sleep(2000);
+        let confId = await driver.findElement(By.xpath("//*[@id='app-container']/ng-component/meeting-layout/div/div[2]/ng-component/div/div[2]/conference-preview/div/div/table/tbody/tr[3]/td[2]/p")).getText();
+        await driver.sleep(2000);
 
 
+        let infoToTelegram = `${theme}
+        Дата начала: ${date}
+        Время начала: ${hour}:${minute}
+        Продолжительность: ${duration}
+        ID конференции: ${confId}
+        Примечания: ${info}
+        Усастники: ${emailNumberArray}
+        `
+        sendTelegram(infoToTelegram)
 
     } catch (e) {
         return;
     }
 };
+//sendTelegram('Конференция пиздатых людей', 'Собираем всех пиздатых людей в одном месте', '17.03.2021', '23', '45', '60', ['va@icepartners.ru', '79250740753'], '564654');
+searchExtension('Конференция пиздатых людей', 'Собираем всех пиздатых людей в одном месте', '17.03.2021', '23', '00', '60', ['va@icepartners.ru', '79250740753']);

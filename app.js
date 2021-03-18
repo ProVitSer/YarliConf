@@ -1,7 +1,7 @@
 "use strict";
 const { Builder, By, Key, until } = require('selenium-webdriver'),
-    config = require("./config/config"),
-    telegram = require(`telegram-bot-api`),
+    config = require("./config"),
+    telegram = require('telegram-bot-api'),
     low = require('lowdb'),
     FileSync = require('lowdb/adapters/FileSync'),
     axios = require('axios'),
@@ -9,6 +9,8 @@ const { Builder, By, Key, until } = require('selenium-webdriver'),
 
 const adapter = new FileSync('db.json');
 const db = low(adapter);
+
+axios.defaults.withCredentials = true;
 
 let api = new telegram({
     token: '891688089:AAGwdwxxKcYp5mrUtGl_2JqmyuhiecpQgaE',
@@ -81,12 +83,7 @@ async function sendTelegram(info) {
 
 async function addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray) {
     try {
-        await driver.get(`https://${config.PBX3cx.url}/webclient/#/login`);
-        await driver.wait(until.elementLocated(By.className('btn btn-lg btn-primary btn-block')), 10 * 10000);
-        await driver.findElement(By.xpath("//input[@placeholder='Добавочный номер']")).sendKeys(config.PBX3cx.username);
-        await driver.findElement(By.xpath("//input[@placeholder='Пароль']")).sendKeys(config.PBX3cx.password);
-        await driver.findElement(By.className('btn btn-lg btn-primary btn-block')).click();
-        await driver.sleep(5000);
+
         await driver.get(`https://${config.PBX3cx.url}/webclient/#/conferences/new`);
         await driver.sleep(5000);
 
@@ -142,12 +139,12 @@ async function addConference(driver, theme, info, date, hour, minute, duration, 
         let confId = await driver.findElement(By.xpath("//*[@id='app-container']/ng-component/meeting-layout/div/div[2]/ng-component/div/div[2]/conference-preview/div/div/table/tbody/tr[3]/td[2]/p")).getText();
         await driver.sleep(2000);
 
-
-        let infoToTelegram = `Название конференции: ${theme}
+        //ID конференции: ${confId}
+        let infoToTelegram = `Создана новая конференция 
+        Название конференции: ${theme}
         Дата начала: ${date}
         Время начала: ${hour}:${minute}
         Продолжительность: ${duration}
-        ID конференции: ${confId}
         Примечания: ${info}
         Участники: ${emailNumberArray}
         `
@@ -171,12 +168,6 @@ async function addConference(driver, theme, info, date, hour, minute, duration, 
 
 async function deleteConference(driver, theme) {
     try {
-        await driver.get(`https://${config.PBX3cx.url}/webclient/#/login`);
-        await driver.wait(until.elementLocated(By.className('btn btn-lg btn-primary btn-block')), 10 * 10000);
-        await driver.findElement(By.xpath("//input[@placeholder='Добавочный номер']")).sendKeys(config.PBX3cx.username);
-        await driver.findElement(By.xpath("//input[@placeholder='Пароль']")).sendKeys(config.PBX3cx.password);
-        await driver.findElement(By.className('btn btn-lg btn-primary btn-block')).click();
-        await driver.sleep(5000);
         //await driver.sleep(5000);
         await driver.get(`https://${config.PBX3cx.url}/webclient/#/conferences/list`);
         //await driver.findElement(By.id('btnNewConference')).click();
@@ -189,6 +180,10 @@ async function deleteConference(driver, theme) {
         await driver.sleep(1000);
         await driver.findElement(By.id("btnOk")).click();
         await driver.sleep(1000);
+
+        //ID конференции: ${confId}
+        let infoToTelegram = `Конференция ${theme} удалена или изменилось время проведения`
+        let resultSend = await sendTelegram(infoToTelegram);
         return '';
     } catch (e) {
         sendTelegram(`deleteConference ${e}`);
@@ -212,68 +207,225 @@ async function logout(driver) {
         await driver.sleep(1000);
         await driver.findElement(By.xpath("//img[@class='ng-star-inserted']")).click();
         await driver.findElement(By.id("menuLogout")).click();
-        driver.quit();
+        //driver.quit();
         return '';
     } catch (e) {
         sendTelegram(`logout ${e}`);
     }
 }
 
-
-async function modifyConference(theme, info, date, hour, minute, duration, emailNumberArray) {
+async function login(driver, organizer) {
     try {
+        await driver.get(`https://${config.PBX3cx.url}/webclient/#/login`);
+        await driver.wait(until.elementLocated(By.className('btn btn-lg btn-primary btn-block')), 10 * 10000);
+        await driver.findElement(By.xpath("//input[@placeholder='Добавочный номер']")).sendKeys(config.login[organizer].exten);
+        await driver.findElement(By.xpath("//input[@placeholder='Пароль']")).sendKeys(config.login[organizer].password);
+        await driver.findElement(By.className('btn btn-lg btn-primary btn-block')).click();
+        await driver.sleep(5000);
+        return '';
+    } catch (e) {
+        sendTelegram(`login ${e}`);
+    }
+}
+
+async function modifyConference(driver, { theme, organizer, info, date, hour, minute, duration, emailNumberArray }) {
+    try {
+        console.log(theme, info, date, hour, minute, duration, emailNumberArray);
+
         let resultSearchInDB = await searchInDBByTheme(theme);
         if (resultSearchInDB == undefined) {
             console.log('Конференции нет создаем');
-            let driver = await new Builder().forBrowser('chrome').build();
+            await login(driver, organizer);
+            //let driver = await new Builder().forBrowser('chrome').build();
             let resultAddConference = await addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray);
-            logout(driver);
+            await logout(driver);
+            return '';
         } else if (resultSearchInDB.theme == theme && resultSearchInDB.date == date && resultSearchInDB.time == `${hour}:${minute}`) {
             console.log(`Конференция ${theme}, ${info}, ${date}, ${hour}, ${minute}, ${duration}, ${emailNumberArray} уже есть, изменений не требуется`);
+            return '';
         } else {
             console.log(`Конференция ${resultSearchInDB} требует изменений`);
             console.log(`Новые данные ${theme}, ${info}, ${date}, ${hour}, ${minute}, ${duration}, ${emailNumberArray}`);
-            let driver = await new Builder().forBrowser('chrome').build();
+            await login(driver, organizer);
+            //let driver = await new Builder().forBrowser('chrome').build();
 
             let resultDeleteConference = await deleteConference(driver, theme);
             let resultDeleteInDB = await deleteIDInDB(theme);
             let resultAddConference = await addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray);
-            logout(driver);
+            await logout(driver);
+            return '';
         }
     } catch (e) {
-        sendTelegram(e);
+        sendTelegram(`modifyConference ${e}`);
     }
 }
 
 
-async function checkConference(array) {
-    let resultSearchAllInDB = await searchAllInDB();
+// async function checkConference(array) {
+//     let resultSearchAllInDB = await searchAllInDB();
 
 
-    // for (const key of resultSearchAllInDB) {
-    //     console.log(key);
-    // }
+//     // for (const key of resultSearchAllInDB) {
+//     //     console.log(key);
+//     // }
+// }
+
+async function getToken() {
+    let dataGet = JSON.stringify({ "jsonrpc": "2.0", "id": 1, "method": "Session.login", "params": { "userName": config.mail.username, "password": config.mail.password, "application": { "name": "Sample app", "vendor": "Kerio", "version": "1.0" } } });
+
+    let sendData = {
+        method: 'get',
+        url: `https://${config.mail.url}/webmail/api/jsonrpc/`,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        data: dataGet
+    };
+
+    const res = await axios(sendData, { withCredentials: true });
+    const result = await res;
+
+    if (!result) {
+        console.log('Отсутствует результат');
+        return [];
+    }
+    let tokenInfo = [result.data.result.token, result.headers['set-cookie']]
+    return tokenInfo;
+}
+
+async function getConferenceList(token, cookie) {
+    let dataPost = JSON.stringify({ "jsonrpc": "2.0", "id": 10, "method": "Occurrences.get", "params": { "query": { "fields": ["id", "eventId", "folderId", "watermark", "access", "summary", "location", "description", "label", "categories", "start", "end", "travelMinutes", "freeBusy", "isPrivate", "isAllDay", "priority", "rule", "attendees", "reminder", "isException", "hasReminder", "isRecurrent", "isCancelled", "seqNumber", "modification", "attachments"], "start": 0, "limit": -1, "combining": "And", "conditions": [{ "fieldName": "start", "comparator": "GreaterEq", "value": "20210317T000000+0300" }, { "fieldName": "end", "comparator": "LessThan", "value": "20210319T000000+0300" }] }, "folderIds": ["keriostorage://folder/yarli.ru/v.prokin/e5040485-6f2d-4e4d-a8b4-921ac958480e"] } });
+
+    let configPost = {
+        method: 'post',
+        url: `https://${config.mail.url}/webmail/api/jsonrpc/`,
+        headers: {
+
+            'Content-Type': 'application/json',
+            'Cookie': cookie,
+            'X-Token': `${token}`
+        },
+        data: dataPost
+    };
+
+    const res = await axios(configPost, { withCredentials: true });
+    const result = await res;
+
+    if (!result) {
+        console.log('Отсутствует результат');
+        return [];
+    }
+
+    return result.data.result;
 }
 
 
-//sendTelegram('Конференция пиздатых людей', 'Собираем всех пиздатых людей в одном месте', '17.03.2021', '23', '45', '60', ['va@icepartners.ru', '79250740753'], '564654');
-//modifyConference('Конферен', 'Собираем всех пиздатых людей в одном месте', '17.03.2021', '23', '50', '60', ['vp@icepartners.ru', '79250740753']);
-//Изменить время, изменить список участников, удалиться
+async function modifyConferenceList(info) {
+    try {
+        let data = [];
 
-checkConference();
+        let i = 0;
+
+        for (const key of info.list) {
+            let emailNumberArray = [];
+            console.log(key);
+
+            for (const { emailAddress }
+                of key.attendees) {
+                emailNumberArray.push(emailAddress);
+            }
+            let number = key.description;
+            let numberArry = number.split('\n');
+            emailNumberArray = emailNumberArray.concat(numberArry);
+            data[i] = {
+                theme: key.summary,
+                organizer: emailNumberArray[0],
+                info: `Конференция ${key.summary}`,
+                date: moment(key.start).local().format("DD.MM.YYYY"),
+                hour: moment(key.start).local().format("HH"),
+                minute: moment(key.start).local().format("MM"),
+                duration: key.travelMinutes,
+                emailNumberArray: emailNumberArray
+
+            };
+            i++;
+        };
+
+        return data;
+    } catch (e) {
+        sendTelegram(`modifyConferenceList ${e}`);
+    }
+}
+
+async function deleteInDBNotUseConference(getConferenceList) {
+    try {
+        let arrayConfListKerio = [];
+        let arrayDeleteConference = [];
+        const conference = await db.get('conference')
+            .value();
+        for (const key of getConferenceList) {
+            arrayConfListKerio.push(key.theme);
+        }
 
 
+        for (const key of conference) {
+            if (arrayConfListKerio.includes(key.theme) == false && key.theme != "Тест Тестович") {
+                if (key.theme.match(/(3CX Conference:) .+/) == null) {
+                    arrayDeleteConference.push([key.theme, key.member[0]]);
+                }
+            }
+        }
+        console.log(arrayDeleteConference);
+        return arrayDeleteConference;
+    } catch (e) {
+        sendTelegram(`deleteInDBNotUseConference ${e}`);
+    }
+}
 
+async function startModifyConference() {
+    try {
+        let driver = await new Builder().forBrowser('chrome').build();
 
-// for (const key of conference) {
-//     if (key.theme == theme && key.date == date && key.time == `${hour}:${minute}`) {
-//         console.log('Конференция уже есть, изменений не требуется');
-//     } else if (key.theme == theme) {
-//         console.log('Конференция требует изменений');
-//         let resultDeleteConference = await deleteConference(theme);
-//         //let resultAddConference = await addConference(theme, info, date, hour, minute, duration, emailNumberArray);
-//     } else {
-//         console.log('Конференции нет создаем');
-//         let resultAddConference = await addConference(theme, info, date, hour, minute, duration, emailNumberArray);
-//     }
-// }
+        let resultToken = await getToken();
+        let resultGetConferenceList = await getConferenceList(resultToken[0], resultToken[1])
+        let resultModifyConferenceList = await modifyConferenceList(resultGetConferenceList);
+        console.log(resultModifyConferenceList);
+
+        let resultDeleteNotUseConference = await deleteInDBNotUseConference(resultModifyConferenceList);
+        //if (resultDeleteNotUseConference.length != 0) {
+        for (const key of resultDeleteNotUseConference) {
+            await login(driver, key[1]);
+            await deleteConference(driver, key[0]);
+            await deleteIDInDB(key[0]);
+            await logout(driver);
+        }
+
+        //}
+
+        for (const key of resultModifyConferenceList) {
+            if (key.theme.match(/(3CX Conference:) .+/) == null) {
+                console.log(key);
+                await modifyConference(driver, key)
+            }
+
+            //console.log(key);
+        }
+        await driver.quit();
+        return '';
+
+    } catch (e) {
+        sendTelegram(`startModifyConference ${e}`)
+    }
+}
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function init() {
+    console.log("Поехали");
+    await startModifyConference();
+    await delay(5000);
+    console.log("Все ок!");
+    init();
+}
+
+init();

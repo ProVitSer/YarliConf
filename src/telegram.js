@@ -1,7 +1,8 @@
 "use strict";
 const config = require("../config/config"),
     telegram = require('telegram-bot-api'),
-    logger = require('../logger/logger');
+    logger = require('../logger/logger'),
+    util = require('util');
 
 
 
@@ -14,7 +15,7 @@ const api = new telegram({
 
 async function sendTelegram(info) {
     try {
-        logger.info.access(`Информация в telegram ${util.inspect(info)}`);
+        logger.access.info(`Информация в telegram ${util.inspect(info)}`);
         await api.sendMessage({
             chat_id: config.telegram.chatId,
             text: info

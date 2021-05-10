@@ -64,7 +64,7 @@ class Axios {
 
             const token = result.data.result.token;
             const cookie = result.headers['set-cookie'];
-            logger.info.access(`Получен токен  ${util.inspect(token)}`);
+            logger.access.info(`Получен токен  ${util.inspect(token)}`);
             return { token, cookie }
 
         } catch (e) {
@@ -124,7 +124,7 @@ class Axios {
                 logger.debug.debug(`Отсутствует результат на запрос списка конференций ${util.inspect(e)}`);
                 return '';
             };
-            logger.info.access(`Получены данные со списком конференций ${util.inspect(result)}`);
+            logger.access.info(`Получены данные со списком конференций ${util.inspect(result)}`);
             return result.data.result;
 
         } catch (e) {

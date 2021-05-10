@@ -28,7 +28,7 @@ log4js.configure({
     categories: {
         access: {
             appenders: [`access`],
-            level: `debug`
+            level: `info`
         },
         debug: {
             appenders: [`debug`],
@@ -41,8 +41,12 @@ log4js.configure({
     }
 });
 
+const access = log4js.getLogger('access');
+const debug = log4js.getLogger('debug');
+const error = log4js.getLogger('error');
+
 module.exports = {
-    info: log4js.getLogger('access'),
-    debug: log4js.getLogger('debug'),
-    error: log4js.getLogger('error'),
+    access,
+    debug,
+    error
 };

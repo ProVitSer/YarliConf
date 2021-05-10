@@ -13,7 +13,7 @@ const axios = new Axios();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function init() {
-    logger.info.access(`Начинается обработка данных ${util.inspect(moment().format('YYYY-MM-DD hh:mm:ss'))}`);
+    logger.access.info(`Начинается обработка данных ${util.inspect(moment().format('YYYY-MM-DD hh:mm:ss'))}`);
     await startModifyConf();
     await delay(5000);
     init();
@@ -24,7 +24,7 @@ async function startModifyConf() {
         const driver = await new Builder().forBrowser('chrome').build(); //Инициализация web драйвера
         const startDate = moment().format('YYYYMMDDT000000+0300');
         const endDate = moment().add(5, 'days').format('YYYYMMDDT000000+0300');
-        logger.info.access(`Выгрузка данных за период ${startDate}-${endDate}`);
+        logger.access.info(`Выгрузка данных за период ${startDate}-${endDate}`);
         const { token, cookie } = await axios.getToken(); //Получение авторизационного токена на Kerio для дальнешего взаимодействия
         const getKerioConferenceList = await axios.getConferenceList(token, cookie, startDate, endDate); //Получение списка конференций из календаря Kerio
         const resultFormatConferenceList = await formatConferenceList(getKerioConferenceList); //Форматирование списка конференций
@@ -125,8 +125,8 @@ async function modifyConf(driver, { theme, organizer, info, date, hour, minute, 
 
 async function differenceKerioDBConference(kerioConf, dbConf) {
     try {
-        logger.info.access(`Конференции Kerio ${util.inspect(kerioConf)}`);
-        logger.info.access(`Конференции из БД ${util.inspect(dbConf)}`);
+        logger.access.info(`Конференции Kerio ${util.inspect(kerioConf)}`);
+        logger.access.info(`Конференции из БД ${util.inspect(dbConf)}`);
 
         let arrayKerioConfTheme = [];
         let arrayDeleteConference = [];
@@ -141,7 +141,7 @@ async function differenceKerioDBConference(kerioConf, dbConf) {
             }
         }
 
-        logger.info.access(`Список конференций на удаление ${util.inspect(arrayDeleteConference)}`);
+        logger.access.info(`Список конференций на удаление ${util.inspect(arrayDeleteConference)}`);
         return arrayDeleteConference;
     } catch (e) {
         logger.error.error(`Ошибка нахождения разницы между конференциями kerio и БД ${util.inspect(e)}`);
@@ -223,7 +223,7 @@ async function formatConferenceList(info) {
     try {
         let data = [];
         let i = 0;
-        logger.info.access(`Список конференций для форматирования ${util.inspect(info)}`);
+        logger.access.info(`Список конференций для форматирования ${util.inspect(info)}`);
 
         for (const conference of info.list) {
 
@@ -250,7 +250,7 @@ async function formatConferenceList(info) {
                 emailNumberArray: emailNumberArray
 
             };
-            logger.info.access(`Отформатированная конференция ${util.inspect(data[i])}`);
+            logger.access.info(`Отформатированная конференция ${util.inspect(data[i])}`);
             i++;
         }
 

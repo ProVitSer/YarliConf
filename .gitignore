@@ -2,3 +2,4 @@ node_modules
 config*
 chromedriver.exe
 db.json
+oldapp.js

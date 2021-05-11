@@ -53,7 +53,7 @@ async function startModifyConf() {
 }
 
 
-async function telegramNotification(text, confId, theme, info, date, hour, minute, duration, emailNumberArray) {
+async function telegramNotification(text, { theme, info, date, hour, minute, duration, emailNumberArray }) {
     try {
         const infoToTelegram = `${text} 
             Название конференции: ${theme}
@@ -98,23 +98,23 @@ async function modifyConf(driver, { theme, organizer, info, date, hour, minute, 
 
         //Проверяем существует конференция в БД или нет
         if (resultSearchInDB == undefined) { //Конференции в БД нет, создаем новую конференцию
-            await login(driver, organizer); //Авторизуемся в интерфейсе 3сх под ответственным пользователем
-            const confId = await addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray); // Добавляем новую конференцию
+            await selenium.login(driver, organizer); //Авторизуемся в интерфейсе 3сх под ответственным пользователем
+            const confId = await selenium.addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray); // Добавляем новую конференцию
             await telegramNotification(`Создана новая концеренция ID ${confId}`, theme, info, date, hour, minute, duration, emailNumberArray); //Уведомляем к группу о создание новой конференции
             await insertInDB(confId, theme, info, date, hour, minute, duration, emailNumberArray); //Добавляем в БД информациюо новой конференции
-            await logout(driver); //Выходим изинтерфейса 3CX
+            await selenium.logout(driver); //Выходим изинтерфейса 3CX
             return '';
         } else if (resultSearchInDB.theme == theme && resultSearchInDB.date == date && resultSearchInDB.time == `${hour}:${minute}`) { //Конференция уже существует и не требует изменений
             return '';
         } else { //Конференция существует, но не совпадает время или дата (пользователь поменял данные). Удаляем и пересоздаем
-            await login(driver, organizer);
+            await selenium.login(driver, organizer);
             await telegramNotification(`Удалена измененная конференция ${resultSearchInDB.id}`, resultSearchInDB.theme, resultSearchInDB.info, resultSearchInDB.date, resultSearchInDB.hour, resultSearchInDB.minute, resultSearchInDB.duration, resultSearchInDB.emailNumberArray);
             await selenium.deleteConference(driver, resultSearchInDB.theme); //Удаляем конференцию в интерфейсе 3СХ
             await db.deleteIDInDB(resultSearchInDB.theme); //Удаляем конференцию из БД
-            const confId = await addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray); //Добавляем новую конференцию, так как были изменение 
+            const confId = await selenium.addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray); //Добавляем новую конференцию, так как были изменение 
             await telegramNotification(`Создана новая концеренция ID ${confId}`, theme, info, date, hour, minute, duration, emailNumberArray);
             await insertInDB(confId, theme, info, date, hour, minute, duration, emailNumberArray);
-            await logout(driver);
+            await selenium.logout(driver);
             return '';
         }
     } catch (e) {

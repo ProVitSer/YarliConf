@@ -124,7 +124,7 @@ class Axios {
                 logger.debug.debug(`Отсутствует результат на запрос списка конференций ${util.inspect(e)}`);
                 return '';
             };
-            logger.access.info(`Получены данные со списком конференций ${util.inspect(result)}`);
+            logger.access.info(`Получены данные со списком конференций ${util.inspect(result.data.result)}`);
             return result.data.result;
 
         } catch (e) {

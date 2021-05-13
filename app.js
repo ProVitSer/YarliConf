@@ -15,6 +15,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function init() {
     logger.access.info(`Начинается обработка данных ${util.inspect(moment().format('YYYY-MM-DD hh:mm:ss'))}`);
     await startModifyConf();
+    await driver.quit(); //Выходим из браузера
     await delay(5000);
     init();
 }
@@ -53,10 +54,11 @@ async function startModifyConf() {
 }
 
 
-async function telegramNotification(text, { theme, info, date, hour, minute, duration, emailNumberArray }) {
+async function telegramNotification(text, { theme, organizer, info, date, hour, minute, duration, emailNumberArray }) {
     try {
         const infoToTelegram = `${text} 
             Название конференции: ${theme}
+            Организатор: ${organizer}
             Дата начала: ${date}
             Время начала: ${hour}:${minute}
             Продолжительность: ${duration}
@@ -72,11 +74,12 @@ async function telegramNotification(text, { theme, info, date, hour, minute, dur
     }
 }
 
-async function insertInDB(id, theme, info, date, hour, minute, duration, emailNumberArray) {
+async function insertInDB(id, theme, organizer, info, date, hour, minute, duration, emailNumberArray) {
     try {
         const data = {
             id,
             theme,
+            organizer,
             info,
             date,
             hour,
@@ -96,24 +99,34 @@ async function modifyConf(driver, { theme, organizer, info, date, hour, minute, 
     try {
         const resultSearchInDB = await db.searchInDBByTheme(theme);
 
+        let diffResult;
+        if (resultSearchInDB != undefined) { //Проверям изменился ли список номеров или email, которые должныбыть добавлены в конференцию
+            const diff = function(a1, a2) {
+                return a1.filter(i => !a2.includes(i))
+                    .concat(a2.filter(i => !a1.includes(i)))
+            }
+
+            diffResult = diff(resultSearchInDB.emailNumberArray, emailNumberArray);
+        }
+
         //Проверяем существует конференция в БД или нет
         if (resultSearchInDB == undefined) { //Конференции в БД нет, создаем новую конференцию
             await selenium.login(driver, organizer); //Авторизуемся в интерфейсе 3сх под ответственным пользователем
             const confId = await selenium.addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray); // Добавляем новую конференцию
-            await telegramNotification(`Создана новая концеренция ID ${confId}`, theme, info, date, hour, minute, duration, emailNumberArray); //Уведомляем к группу о создание новой конференции
-            await insertInDB(confId, theme, info, date, hour, minute, duration, emailNumberArray); //Добавляем в БД информациюо новой конференции
+            await telegramNotification(`Создана новая концеренция ID ${confId}`, theme, organizer, info, date, hour, minute, duration, emailNumberArray); //Уведомляем к группу о создание новой конференции
+            await insertInDB(confId, theme, organizer, info, date, hour, minute, duration, emailNumberArray); //Добавляем в БД информациюо новой конференции
             await selenium.logout(driver); //Выходим изинтерфейса 3CX
             return '';
-        } else if (resultSearchInDB.theme == theme && resultSearchInDB.date == date && resultSearchInDB.time == `${hour}:${minute}`) { //Конференция уже существует и не требует изменений
+        } else if (resultSearchInDB.theme == theme && resultSearchInDB.date == date && resultSearchInDB.hour == `${hour}` && resultSearchInDB.minute == `${minute}` && diffResult.length == 0) { //Конференция уже существует и не требует изменений
             return '';
         } else { //Конференция существует, но не совпадает время или дата (пользователь поменял данные). Удаляем и пересоздаем
             await selenium.login(driver, organizer);
-            await telegramNotification(`Удалена измененная конференция ${resultSearchInDB.id}`, resultSearchInDB.theme, resultSearchInDB.info, resultSearchInDB.date, resultSearchInDB.hour, resultSearchInDB.minute, resultSearchInDB.duration, resultSearchInDB.emailNumberArray);
+            await telegramNotification(`Удалена измененная конференция ${resultSearchInDB.id}`, resultSearchInDB.theme, resultSearchInDB.organizer, resultSearchInDB.info, resultSearchInDB.date, resultSearchInDB.hour, resultSearchInDB.minute, resultSearchInDB.duration, resultSearchInDB.emailNumberArray);
             await selenium.deleteConference(driver, resultSearchInDB.theme); //Удаляем конференцию в интерфейсе 3СХ
             await db.deleteIDInDB(resultSearchInDB.theme); //Удаляем конференцию из БД
             const confId = await selenium.addConference(driver, theme, info, date, hour, minute, duration, emailNumberArray); //Добавляем новую конференцию, так как были изменение 
-            await telegramNotification(`Создана новая концеренция ID ${confId}`, theme, info, date, hour, minute, duration, emailNumberArray);
-            await insertInDB(confId, theme, info, date, hour, minute, duration, emailNumberArray);
+            await telegramNotification(`Создана новая концеренция ID ${confId}`, theme, organizer, info, date, hour, minute, duration, emailNumberArray);
+            await insertInDB(confId, theme, organizer, info, date, hour, minute, duration, emailNumberArray);
             await selenium.logout(driver);
             return '';
         }
@@ -137,7 +150,7 @@ async function differenceKerioDBConference(kerioConf, dbConf) {
 
         for (const conf of dbConf) {
             if (arrayKerioConfTheme.includes(conf.theme) == false && conf.theme != "Тест Тестович") {
-                arrayDeleteConference.push([conf.theme, conf.member[0]]);
+                arrayDeleteConference.push([conf.theme, conf.emailNumberArray[1]]);
             }
         }
 
@@ -241,11 +254,11 @@ async function formatConferenceList(info) {
 
             data[i] = {
                 theme: conference.summary,
-                organizer: emailNumberArray[0],
+                organizer: emailNumberArray[1],
                 info: `Конференция ${conference.summary}`,
                 date: moment(conference.start).local().format("DD.MM.YYYY"),
                 hour: moment(conference.start).local().format("HH"),
-                minute: moment(conference.start).local().format("MM"),
+                minute: moment(conference.start).local().format("mm"),
                 duration: hoursDiff,
                 emailNumberArray: emailNumberArray
 

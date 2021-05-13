@@ -45,6 +45,7 @@ async function deleteConference(driver, theme) {
         await driver.findElement(By.xpath("//input[@placeholder='Поиск ...']")).sendKeys(theme);
         await driver.sleep(10000);
         await driver.findElement(By.xpath(`//*[contains(text(), ' ${theme} ')]//parent::tr[1]//parent::tbody//parent::table//parent::meeting-list-item//parent::a[@routerlinkactive='selected']`)).click();
+        await driver.sleep(1000);
         await driver.findElement(By.id("btnDeleteConference")).click();
         await driver.sleep(1000);
         await driver.findElement(By.id("btnOk")).click();

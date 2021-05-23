@@ -3,3 +3,5 @@ config*
 chromedriver.exe
 db.json
 oldapp.js
+test*
+logs*

@@ -1,31 +1,42 @@
 {
-  "name": "yarliconf",
-  "version": "1.0.0",
-  "description": "Модуль создания конференций с уведомлением в telegram. ",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ProVitSer/YarliConf.git"
-  },
-  "keywords": [
-    "voip",
-    "3cx",
-    "telegram"
-  ],
-  "author": "ProVitSer",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/ProVitSer/YarliConf/issues"
-  },
-  "homepage": "https://github.com/ProVitSer/YarliConf#readme",
-  "dependencies": {
-    "selenium-webdriver": "^4.0.0-beta.2"
-  },
-  "devDependencies": {
-    "eslint": "^7.22.0",
-    "eslint-config-airbnb": "^18.2.1"
-  }
+    "name": "yarliconf",
+    "version": "1.0.0",
+    "description": "Модуль создания конференций с уведомлением в telegram. ",
+    "main": "app.js",
+    "scripts": {
+        "test": "mocha --timeout 20000 ./test/test.prod.js",
+        "test-dev": "mocha --timeout 20000 ./test/test.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ProVitSer/YarliConf.git"
+    },
+    "keywords": [
+        "voip",
+        "3cx",
+        "telegram"
+    ],
+    "author": "ProVitSer",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/ProVitSer/YarliConf/issues"
+    },
+    "homepage": "https://github.com/ProVitSer/YarliConf#readme",
+    "dependencies": {
+        "axios": "^0.21.1",
+        "log4js": "^6.3.0",
+        "lowdb": "^1.0.0",
+        "moment": "^2.29.1",
+        "selenium-webdriver": "^4.0.0-beta.2",
+        "telegram-bot-api": "^2.0.1"
+    },
+    "devDependencies": {
+        "chai": "^4.3.4",
+        "eslint": "^7.22.0",
+        "eslint-config-airbnb": "^18.2.1",
+        "mocha": "^8.4.0",
+        "rewire": "^5.0.0",
+        "sinon": "^10.0.0",
+        "supertest": "^6.1.3"
+    }
 }

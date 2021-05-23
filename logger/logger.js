@@ -26,6 +26,7 @@ log4js.configure({
         }
     },
     categories: {
+        default: { appenders: ['access'], level: 'ALL' },
         access: {
             appenders: [`access`],
             level: `info`

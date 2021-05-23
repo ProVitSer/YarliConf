@@ -8,12 +8,20 @@ const { Builder, By, until } = require('selenium-webdriver'),
 
 async function login(driver, email) {
     try {
+        driver.manage().window().maximize();
         await driver.get(`https://${config.PBX3cx.url}/webclient/#/login`);
         await driver.wait(until.elementLocated(By.className('btn btn-lg btn-primary btn-block')), 10 * 10000);
         await driver.findElement(By.xpath("//input[@placeholder='Добавочный номер']")).sendKeys(config.login[email].exten);
         await driver.findElement(By.xpath("//input[@placeholder='Пароль']")).sendKeys(config.login[email].password);
         await driver.findElement(By.className('btn btn-lg btn-primary btn-block')).click();
         await driver.sleep(5000);
+        const isAuthFailure = await driver.findElement(By.className("text-danger wrapper text-center")).isDisplayed(); //Проверка авторизации под пользователем
+        console.log(isAuthFailure);
+        if (isAuthFailure == true) {
+            logger.error.error(`Ошибка авторизации на 3СХ под пользователем ${config.login[email].exten} ${config.login[email].password}`);
+            telegram.sendTelegram(`Ошибка авторизации на 3СХ под пользователем ${config.login[email].exten} ${config.login[email].password}`);
+            return 'AuthError'
+        }
         return '';
     } catch (e) {
         logger.error.error(`Ошибка авторизации на 3СХ ${util.inspect(e)}`);

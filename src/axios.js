@@ -57,8 +57,9 @@ class Axios {
 
         try {
             const result = await this.sendAxios('get', this.headers, json);
-            if (result.length = 0) {
-                logger.debug.debug(`Отсутствует результат на запрос токена ${util.inspect(e)}`);
+            if (!result) {
+                logger.debug.debug(`Отсутствует результат на запрос токена ${util.inspect(result)}`);
+                telegram.sendTelegram(`Ошибка получения токена getToken`);
                 return '';
             };
 
@@ -70,6 +71,7 @@ class Axios {
         } catch (e) {
             logger.error.error(`Ошибка получения токена ${util.inspect(e)}`);
             telegram.sendTelegram(`Ошибка получения токена getToken`);
+            throw e;
         }
     }
 
@@ -130,6 +132,7 @@ class Axios {
         } catch (e) {
             logger.error.error(`Ошибка запроса списка конференций ${util.inspect(e)}`);
             telegram.sendTelegram(`Ошибка запроса списка конференций getConferenceList`);
+            throw e;
         }
     }
 }
